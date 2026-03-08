@@ -1,6 +1,6 @@
 -- SME-Score Database Migration
 -- Version: 1.0.0
--- Description: Schéma de base de données pour le scoring des PME ivoiriennes
+-- Description: Schéma de base de données pour le scoring des PME ivoiri
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -74,21 +74,21 @@ CREATE POLICY "Anyone can read companies" ON companies
 
 -- Policy: Authenticated users can insert companies
 CREATE POLICY "Users can insert companies" ON companies
-    FOR INSERT WITH CHECK (auth.role() IN ('authenticated', 'service_role'));
+    FOR INSERT WITH CHECK ((current_setting('request.jwt.claims', true)::json->>'role') IN ('authenticated', 'service_role'));
 
 -- Policy: Only service role can update/delete companies
 CREATE POLICY "Service role can modify companies" ON companies
-    FOR ALL USING (auth.role() = 'service_role');
+    FOR ALL USING ((current_setting('request.jwt.claims', true)::json->>'role') = 'service_role');
 
 -- Policy: Scores - read for authenticated, insert for service role
 CREATE POLICY "Anyone can read scores" ON scores
     FOR SELECT USING (true);
 
 CREATE POLICY "Service role can insert scores" ON scores
-    FOR INSERT WITH CHECK (auth.role() = 'service_role');
+    FOR INSERT WITH CHECK ((current_setting('request.jwt.claims', true)::json->>'role') = 'service_role');
 
 CREATE POLICY "Service role can update scores" ON scores
-    FOR UPDATE USING (auth.role() = 'service_role');
+    FOR UPDATE USING ((current_setting('request.jwt.claims', true)::json->>'role') = 'service_role');
 
 -- Policy: Verifications - public read, service role write
 CREATE POLICY "Anyone can read verifications" ON verifications
@@ -99,10 +99,10 @@ CREATE POLICY "Anyone can insert verifications" ON verifications
 
 -- Policy: Audit logs - service role only
 CREATE POLICY "Service role can manage audit_logs" ON audit_logs
-    FOR ALL USING (auth.role() = 'service_role');
+    FOR ALL USING ((current_setting('request.jwt.claims', true)::json->>'role') = 'service_role');
 
--- Create function to get user role from JWT
-CREATE OR REPLACE FUNCTION auth.user_role()
+-- Create function to get user role from JWT (in public schema)
+CREATE OR REPLACE FUNCTION public.user_role()
 RETURNS TEXT AS $$
     SELECT coalesce(
         (current_setting('request.jwt.claims', true)::json->>'role'),
@@ -110,11 +110,11 @@ RETURNS TEXT AS $$
     );
 $$ LANGUAGE SQL STABLE;
 
--- Create function to get company RCCM from JWT
-CREATE OR REPLACE FUNCTION auth.company_rccm()
+-- Create function to get company RCCM from JWT (in public schema)
+CREATE OR REPLACE FUNCTION public.company_rccm()
 RETURNS TEXT AS $$
     SELECT current_setting('request.jwt.claims', true)::json->>'company_rccm';
 $$ LANGUAGE SQL STABLE;
 
 -- Comment on schema
-COMMENT ON SCHEMA public IS 'SME-Score: Scoring et certification des PME ivoiriennes';
+COMMENT ON SCHEMA public IS 'SME-Score: Scoring et certification des PME ivoiri';
